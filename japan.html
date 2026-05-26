@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Japan Explorer JP</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root { 
+      --bg: #f8f1e3; 
+      --text: #1f2937; 
+      --accent: #e63946; 
+      --card: #ffffff; 
+      --sidebar: #f8f1e3; 
+      --place-item: #fff4e6; 
+    }
+    [data-theme="dark"] { 
+      --bg: #0a0f1c; 
+      --text: #f1f5f9; 
+      --accent: #f43f5e; 
+      --card: #111827; 
+      --sidebar: #1e2937; 
+      --place-item: #334155; 
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; transition: background 0.4s; }
+
+    header { background: linear-gradient(90deg, #e63946, #f77f00); color: white; padding: 18px 20px 12px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    header h1 { font-size: 2.45rem; font-weight: 900; letter-spacing: 2px; margin: 0; }
+    .tagline { font-size: 1.22rem; opacity: 0.95; margin-top: 6px; }
+
+    .container { display: flex; height: calc(100vh - 88px); }
+    .sidebar { 
+      width: 340px; 
+      background: var(--sidebar); 
+      color: var(--text); 
+      border-right: 4px solid var(--accent); 
+      overflow-y: auto; 
+      padding: 20px; 
+      box-shadow: 4px 0 20px rgba(0,0,0,0.3); 
+    }
+    .sidebar h3 { margin-bottom: 18px; color: #f77f00; font-size: 1.55rem; display: flex; align-items: center; gap: 8px; }
+
+    .place-item { 
+      padding: 16px; 
+      margin-bottom: 12px; 
+      background: var(--place-item); 
+      color: var(--text); 
+      border-radius: 14px; 
+      cursor: pointer; 
+      transition: all 0.3s; 
+      border-left: 5px solid var(--accent); 
+    }
+    .place-item:hover { transform: translateX(10px); box-shadow: 0 12px 30px rgba(230,57,70,0.4); }
+    .place-item span.emoji { font-size: 1.9rem; margin-right: 12px; }
+
+    .map-container { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; background: #0f1c2e; }
+
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-content { background: var(--card); color: var(--text); max-width: 860px; width: 94%; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,0.5); }
+    .modal-header { background: linear-gradient(90deg, #e63946, #f77f00); color: white; padding: 28px; text-align: center; position: relative; }
+    .modal-header h2 { font-size: 2.1rem; margin: 0; }
+    .modal-body { padding: 32px; max-height: 78vh; overflow-y: auto; }
+
+    .food-highlight { background: #fff7ed; padding: 24px; border-radius: 18px; border-left: 8px solid #f77f00; margin: 30px 0; }
+    [data-theme="dark"] .food-highlight { background: #1e2937; }
+    .food-image { width: 100%; max-height: 240px; object-fit: cover; border-radius: 14px; margin: 18px 0 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); transition: transform 0.6s ease, filter 0.4s ease; }
+    .food-highlight:hover .food-image { transform: scale(1.08) rotate(1deg); filter: brightness(1.15) saturate(1.4); }
+
+    .photo-carousel { position: relative; margin: 30px 0; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.25); }
+    .photo-carousel img { width: 100%; height: 340px; object-fit: cover; display: none; border-radius: 18px; }
+    .photo-carousel img.active { display: block; }
+
+    .carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.65); color: white; border: none; width: 52px; height: 52px; border-radius: 50%; cursor: pointer; font-size: 1.8rem; }
+    .prev { left: 20px; }
+    .next { right: 20px; }
+
+    .close-btn { position: absolute; top: 18px; right: 25px; font-size: 2.8rem; color: white; cursor: pointer; transition: 0.3s; }
+    .close-btn:hover { transform: rotate(90deg) scale(1.15); }
+
+    .controls { position: absolute; top: 22px; left: 22px; z-index: 1000; background: var(--card); color: var(--text); padding: 12px 20px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: flex; gap: 14px; }
+
+    button { background: var(--accent); color: white; border: none; padding: 13px 26px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+    button:hover { transform: scale(1.12) rotate(4deg); }
+
+    .custom-marker-wrapper { width: 66px; height: 66px; display: flex; align-items: flex-end; justify-content: center; }
+    .custom-marker-inner { font-size: 52px; transition: all 0.4s ease; transform-origin: bottom center; }
+    .custom-marker-wrapper:hover .custom-marker-inner { transform: scale(1.55); filter: drop-shadow(0 0 22px #f77f00) brightness(1.7); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Japan Explorer JP</h1>
+  <p class="tagline">Zoom • Hover • Click → Explore places + their famous food</p>
+</header>
+
+<div class="container">
+  <div class="sidebar">
+    <h3>📍 All Destinations</h3>
+    <div id="place-list"></div>
+  </div>
+
+  <div class="map-container">
+    <div class="controls">
+      <button id="theme-toggle">🌙 Dark Mode</button>
+      <button onclick="resetMap()">Reset View</button>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h2 id="modal-name"></h2>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const placesData = [
+  { name: "Tokyo", lat: 35.6828, lng: 139.7595, emoji: "🍣", placeDesc: "Tokyo is the capital city of Japan and one of the largest and most technologically advanced cities in the world. It serves as the political, economic, and cultural center of the country. The city is famous for its modern skyline filled with skyscrapers, advanced transportation systems, and vibrant districts such as Shinjuku, Akihabara, and Shibuya. Tokyo also blends modern life with traditional culture, featuring historic temples and peaceful gardens among its busy streets. One of the most famous attractions in Tokyo is Shibuya Crossing, often described as the busiest pedestrian intersection in the world. Thousands of people cross the street simultaneously when the traffic lights change. Another popular landmark is Tokyo Skytree, which is one of the tallest towers in the world and provides a panoramic view of the entire city.", food: "Sushi", foodDesc: "Tokyo is well known for the traditional Japanese dish Sushi. Sushi is made using specially prepared rice seasoned with vinegar, sugar, and salt. This rice is combined with fresh seafood such as tuna, salmon, shrimp, or eel. Some types of sushi are wrapped in seaweed while others are served with slices of raw fish placed on top of rice. Sushi is typically eaten with soy sauce, pickled ginger, and wasabi. The dish originally developed as a method of preserving fish, but over time it evolved into a refined culinary art and is now considered one of Japan’s most iconic foods.", foodImage: "images/tokyo-sushi.jpg", images: ["images/tokyo-1.webp","images/tokyo-2.avif","images/tokyo-3.jpeg","images/tokyo-4.webp"] },
+  { name: "Osaka", lat: 34.6939, lng: 135.5022, emoji: "🐙", placeDesc: "Osaka is one of the largest cities in Japan and is famous for its energetic atmosphere, shopping districts, and entertainment areas. It is often referred to as “Japan’s Kitchen” because of its strong food culture and variety of local dishes. Osaka is an important economic hub and is known for its friendly residents and lively street life. The city has a rich history that dates back hundreds of years. One of the most famous attractions in Osaka is Dotonbori, a popular entertainment district filled with restaurants, shops, and bright neon signs. Visitors often come here to experience the city’s vibrant nightlife and try different street foods. Another historic landmark is Osaka Castle, which played a major role in Japan’s history during the 16th century and is surrounded by beautiful gardens and parks.", food: "Takoyaki", foodDesc: "Osaka is especially famous for a street food dish called Takoyaki. Takoyaki are small round balls made from a wheat flour batter mixed with pieces of octopus, pickled ginger, and green onions. The batter is poured into a special round mold pan and cooked until the outside becomes crispy while the inside remains soft. Once cooked, the balls are topped with a sweet and savory takoyaki sauce, Japanese mayonnaise, dried bonito flakes, and seaweed powder. Takoyaki is commonly sold at street stalls and festivals and has become one of the signature foods of Osaka.", foodImage: "images/osaka-takoyaki.jpg", images: ["images/osaka-1.jpg","images/osaka-2.jpg","images/osaka-3.avif","images/osaka-4.jpg"] },
+  { name: "Kyoto", lat: 35.0116, lng: 135.7681, emoji: "🍵", placeDesc: "Kyoto is one of the most historic cities in Japan and served as the imperial capital for more than one thousand years. The city is famous for preserving traditional Japanese culture, architecture, and customs. Kyoto has hundreds of temples, shrines, and gardens that attract millions of tourists every year. The city is also known for traditional arts such as tea ceremonies, kimono culture, and geisha performances. One of the most famous attractions in Kyoto is Fushimi Inari Taisha, a Shinto shrine known for its thousands of bright red torii gates that create scenic walking paths through the forest. Another important landmark is Kinkaku-ji, also known as the Golden Pavilion, which is a beautiful temple covered in gold leaf and surrounded by a peaceful garden and pond.", food: "Matcha tea & deserts", foodDesc: "Kyoto is widely known for foods and desserts made with Matcha, a finely ground powder made from specially grown green tea leaves. Matcha has been an important part of Japanese tea ceremonies for centuries and is valued for its vibrant green color and slightly bitter flavor. In Kyoto, matcha is used to prepare a variety of traditional sweets such as matcha ice cream, cakes, pastries, and mochi. It is also served as a hot tea prepared in a ceremonial manner using special utensils.", foodImage: "images/kyoto-matcha.jpg", images: ["images/kyoto-1.webp","images/kyoto-2.webp","images/kyoto-3.jpg","images/kyoto-4.avif"] },
+  { name: "Hiroshima", lat: 34.3914, lng: 132.4519, emoji: "🥞", placeDesc: "Hiroshima is an important historical city located in western Japan. It is widely known for the tragic atomic bombing that occurred during World War II in 1945. After the war, the city was rebuilt and has become a symbol of peace and resilience. Today Hiroshima is a modern city with parks, museums, and memorials dedicated to promoting peace around the world. One of the most significant sites in Hiroshima is Hiroshima Peace Memorial Park, which honors the victims of the atomic bombing. The park contains monuments, museums, and the famous Atomic Bomb Dome, which remains preserved as a reminder of the event.", food: "Hiroshima-style Okonomiyaki", foodDesc: "Hiroshima is famous for its unique style of Okonomiyaki. This dish is a savory pancake made with layers of batter, cabbage, noodles, eggs, and meat or seafood. Unlike the Osaka version, Hiroshima-style okonomiyaki is prepared in layers rather than mixing all ingredients together. It is cooked on a large iron grill and topped with a sweet and savory sauce along with mayonnaise and dried seaweed flakes. This dish is one of the most popular foods among both locals and tourists.", foodImage: "images/hiroshima-okonomiyaki.jpg", images: ["images/hiroshima-1.avif","images/hiroshima-2.jpg","images/hiroshima-3.webp","images/hiroshima-4.jpg"] },
+  { name: "Sapporo", lat: 43.0619, lng: 141.3544, emoji: "🍜", placeDesc: "Sapporo is the largest city on the northern island of Hokkaido and is known for its beautiful natural scenery and cold climate. The city is famous for winter sports, snow-covered landscapes, and outdoor activities. Sapporo has a modern layout with wide streets and parks, making it one of the most comfortable cities to live in Japan. One of the biggest attractions in Sapporo is the Sapporo Snow Festival, which takes place every winter. During this event, huge sculptures made from snow and ice are displayed throughout the city. Millions of visitors come each year to see these impressive artworks.", food: "Miso Ramen", foodDesc: "Sapporo is famous for a regional dish called Miso Ramen. This variation of ramen features noodles served in a rich broth made from fermented soybean paste known as miso. The soup has a strong and savory flavor and is often topped with pork slices, corn, butter, and green onions. Because of the cold climate in Hokkaido, this warm and hearty dish is especially popular among locals.", foodImage: "images/sapporo-miso-ramen.jpg", images: ["images/sapporo-1.jpg","images/sapporo-2.jpg","images/sapporo-3.webp","images/sapporo-4.jpg"] },
+  { name: "Kobe", lat: 34.6901, lng: 135.1956, emoji: "🥩", placeDesc: "Kobe is a major port city located in the Kansai region of Japan. It lies between the mountains and the sea, which gives the city beautiful scenery and a pleasant climate. Kobe has long been an international trading port and has developed a unique cultural atmosphere influenced by both Japanese and Western traditions. The city is known for its modern architecture, shopping districts, and vibrant harbor area. One of the most popular tourist attractions in Kobe is Kobe Harborland, a waterfront entertainment district filled with shopping malls, restaurants, and amusement areas. Visitors can enjoy scenic views of the harbor and the illuminated city skyline at night.", food: "Kobe Beef", foodDesc: "Kobe is world famous for Kobe Beef. This beef comes from a special breed of Wagyu cattle raised under strict conditions. The meat is known for its high level of marbling, which gives it a tender texture and rich flavor. Kobe beef is often prepared as steak or grilled on a hot iron plate known as teppanyaki. Because of its exceptional quality and limited supply, it is considered one of the most luxurious foods in the world.", foodImage: "images/kobe-beef.jpg", images: ["images/kobe-1.jpg","images/kobe-2.jpg","images/kobe-3.webp","images/kobe-4.jpg"] },
+  { name: "Fukuoka", lat: 33.5900, lng: 130.4017, emoji: "🍜", placeDesc: "Fukuoka is the largest city on the island of Kyushu and serves as an important cultural and economic center. The city is known for its relaxed atmosphere, beautiful coastal scenery, and friendly residents. Fukuoka has a long history as a trading hub because of its location close to mainland Asia. A well-known attraction in the city is Ohori Park, a beautiful park with a large lake at its center. The park offers walking paths, gardens, and scenic views that attract both locals and tourists.", food: "Hakata Ramen", foodDesc: "Fukuoka is famous for a dish called Hakata Ramen. This type of ramen features thin noodles served in a creamy pork bone broth called tonkotsu. The broth is prepared by boiling pork bones for many hours until it becomes rich and flavorful. The ramen is usually topped with sliced pork, green onions, and pickled ginger. Hakata ramen has become one of the most popular ramen styles in Japan.", foodImage: "images/fukuoka-ramen.jpg", images: ["images/fukuoka-1.jpg","images/fukuoka-2.jpg","images/fukuoka-3.webp","images/fukuoka-4.jpg"] },
+  { name: "Nara", lat: 34.6851, lng: 135.8050, emoji: "🍣", placeDesc: "Nara is one of the oldest cities in Japan and served as the country’s first permanent capital during the 8th century. The city is known for its historical significance and well-preserved temples and shrines. Nara is also famous for its friendly deer that roam freely in the city’s parks and are considered sacred animals. One of the most important landmarks in the city is Todai-ji, a massive Buddhist temple that houses one of the largest bronze statues of Buddha in the world. The temple complex is surrounded by Nara Park, where visitors can interact with the deer.", food: "Kakinoha Sushi", foodDesc: "A popular local food in Nara is Kakinoha Sushi. This traditional dish consists of sushi wrapped in persimmon leaves, which help preserve the fish and add a subtle aroma. The sushi usually contains salted mackerel or salmon placed on vinegared rice. Kakinoha sushi has been prepared in this region for centuries and is an important part of Nara’s culinary heritage.", foodImage: "images/nara-sushi.jpg", images: ["images/nara-1.jpg","images/nara-2.jpg","images/nara-3.jpg","images/nara-4.jpg"] },
+  { name: "Yokohama", lat: 35.4442, lng: 139.6381, emoji: "🍜", placeDesc: "Yokohama is Japan’s second-largest city and is located just south of Tokyo. It is a major port city that has played an important role in Japan’s international trade since the 19th century. The city is known for its modern skyline, shopping districts, and cultural attractions. One of the most famous places in Yokohama is Yokohama Chinatown, the largest Chinatown in Japan. The area contains hundreds of restaurants and shops offering Chinese and Japanese cuisine.", food: "Ramen", foodDesc: "A well-known dish associated with Yokohama is Ramen. The city is home to the famous Shin-Yokohama Ramen Museum, where visitors can learn about the history of ramen and taste different regional varieties. Ramen consists of noodles served in flavorful broth with toppings such as pork slices, eggs, seaweed, and green onions.", foodImage: "images/yokohama-ramen.webp", images: ["images/yokohama-1.jpg","images/yokohama-2.webp","images/yokohama-3.jpg","images/yokohama-4.jpg"] },
+  { name: "Nagoya", lat: 35.1833, lng: 136.9000, emoji: "🍖", placeDesc: "Nagoya is one of Japan’s largest industrial cities and is an important center for manufacturing and commerce. The city has a long history and played an important role during the feudal period of Japan. Today Nagoya is known for its modern infrastructure and economic importance. One of the city’s most famous landmarks is Nagoya Castle. This historic castle was originally built in the early 17th century and is famous for the golden tiger-headed ornaments placed on its roof.", food: "Miso Katsu", foodDesc: "Nagoya is famous for a regional dish called Miso Katsu. This dish consists of a breaded and deep-fried pork cutlet served with a rich sauce made from fermented soybean paste. The sauce gives the dish a strong and slightly sweet flavor, making it one of Nagoya’s most popular foods.", foodImage: "images/nagoya-miso-katsu.jpg", images: ["images/nagoya-1.jpg","images/nagoya-2.jpg","images/nagoya-3.jpg","images/nagoya-4.jpg"] },
+  { name: "Kanazawa", lat: 36.5614, lng: 136.6567, emoji: "🍣", placeDesc: "Kanazawa is a historic city located on the western coast of Japan. It is famous for preserving traditional Japanese architecture, samurai districts, and tea houses. The city escaped major destruction during World War II, which helped it retain much of its historical character. One of the most beautiful attractions in Kanazawa is Kenrokuen Garden, considered one of the three most beautiful gardens in Japan. The garden features ponds, bridges, and seasonal flowers.", food: "Fresh Seafood Sushi", foodDesc: "Kanazawa is known for fresh seafood dishes such as Sushi because the city is located near the Sea of Japan. The seafood is extremely fresh and includes varieties such as crab, shrimp, and tuna served on vinegared rice.", foodImage: "images/kanazawa-sushi.jpg", images: ["images/kanazawa-1.jpg","images/kanazawa-2.jpg","images/kanazawa-3.jpg","images/kanazawa-4.webp"] },
+  { name: "Hakone", lat: 35.2329, lng: 139.1069, emoji: "🍤", placeDesc: "Hakone is a small town located in the mountains near Tokyo and is famous for its hot springs and scenic landscapes. The area offers beautiful views of lakes, forests, and mountains, making it a popular destination for relaxation and nature tourism. One of the most famous attractions in Hakone is Lake Ashi, a scenic lake where visitors can enjoy boat rides while viewing the surrounding mountains and, on clear days, the distant silhouette of Mount Fuji.", food: "Tempura", foodDesc: "A well-known dish in this region is Tempura. Tempura is made by dipping seafood or vegetables into a light batter and frying them until crispy. It is typically served with a dipping sauce and rice.", foodImage: "images/hakone-tempura.png", images: ["images/hakone-1.webp","images/hakone-2.jpg","images/hakone-3.webp","images/hakone-4.jpg"] },
+  { name: "Nagasaki", lat: 32.7503, lng: 129.8777, emoji: "🍜", placeDesc: "Nagasaki is a historic port city located on the island of Kyushu. It was one of the few Japanese ports open to foreign trade during Japan’s isolation period. The city has a rich cultural history influenced by European and Chinese traders. A significant landmark in the city is Nagasaki Peace Park, which commemorates the victims of the atomic bombing in 1945 and promotes the message of world peace.", food: "Champon", foodDesc: "A popular dish in Nagasaki is Champon. Champon is a noodle soup made with pork broth and topped with seafood, vegetables, and noodles. The dish reflects the Chinese influence on the region’s cuisine.", foodImage: "images/nagasaki-champon.jpg", images: ["images/nagasaki-1.jpg","images/nagasaki-2.jpeg","images/nagasaki-3.jpg","images/nagasaki-4.jpg"] },
+  { name: "Okinawa", lat: 26.3344, lng: 127.8056, emoji: "🍜", placeDesc: "Okinawa is a group of tropical islands located in southern Japan. The region has a unique culture and history that is different from mainland Japan. Okinawa is known for its beautiful beaches, coral reefs, and warm climate. One of the most famous attractions in Okinawa is Okinawa Churaumi Aquarium, one of the largest aquariums in the world featuring massive tanks filled with marine life.", food: "Okinawa Soba", foodDesc: "A traditional dish from Okinawa is Okinawa Soba. This noodle dish uses thick wheat noodles served in a light pork broth and topped with pork belly, fish cake, and green onions.", foodImage: "images/okinawa-soba.webp", images: ["images/okinawa-1.webp","images/okinawa-2.jpg","images/okinawa-3.png","images/okinawa-4.jpg"] },
+  { name: "Beppu", lat: 33.2847, lng: 131.4910, emoji: "🌋", placeDesc: "Beppu is a city located in Oita Prefecture on the island of Kyushu and is famous for its large number of hot springs. The city has one of the highest volumes of hot spring water in the world, making it a major destination for spa tourism in Japan. One of the most famous attractions in Beppu is Beppu Hells, a group of colorful geothermal hot springs that are too hot for bathing but are popular tourist sites because of their unique appearance.", food: "Jigoku Mushi", foodDesc: "Beppu is well known for a local cooking style called Jigoku Mushi. In this method, food such as vegetables, seafood, and eggs is cooked using natural steam from the hot springs. The steam cooking process enhances the natural flavor of the ingredients and makes the dish a unique culinary experience.", foodImage: "images/beppu-jigoku.webp", images: ["images/beppu-1.webp","images/beppu-2.jpg","images/beppu-3.jpg","images/beppu-4.jpg"] }
+];
+
+const japanBounds = L.latLngBounds([20.4, 122.9], [45.6, 153.9]);
+
+let map = L.map('map', {
+  maxBounds: japanBounds,
+  maxBoundsViscosity: 0.98,
+  minZoom: 5,
+  maxZoom: 18,
+  inertia: true,
+  inertiaDeceleration: 6500,
+  easeLinearity: 0.35,
+  preferCanvas: true
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+window.addEventListener('load', () => {
+  map.fitBounds(japanBounds);
+  setTimeout(() => map.invalidateSize(true), 200);
+  setTimeout(() => map.invalidateSize(true), 800);
+  setTimeout(() => map.invalidateSize(true), 1500);
+});
+
+placesData.forEach(place => {
+  const icon = L.divIcon({
+    className: 'custom-marker-wrapper',
+    html: `<div class="custom-marker-inner">${place.emoji}</div>`,
+    iconSize: [66, 66],
+    iconAnchor: [33, 66]
+  });
+
+  L.marker([place.lat, place.lng], { icon })
+    .addTo(map)
+    .bindTooltip(`<b>${place.name}</b><br>Famous for: ${place.food}`, { offset: [0, -45], direction: 'top' })
+    .on('click', () => showModal(place));
+});
+
+const placeList = document.getElementById('place-list');
+placesData.forEach(place => {
+  const div = document.createElement('div');
+  div.className = 'place-item';
+  div.innerHTML = `<span class="emoji">${place.emoji}</span> <strong>${place.name}</strong><br><small>${place.food}</small>`;
+  div.onclick = () => {
+    map.flyTo([place.lat, place.lng], 11, { duration: 1.6 });
+    setTimeout(() => showModal(place), 1700);
+  };
+  placeList.appendChild(div);
+});
+
+function showModal(place) {
+  document.getElementById('modal-name').textContent = place.name;
+  let carouselHTML = place.images.map((url, i) => `<img src="${url}" class="${i === 0 ? 'active' : ''}" loading="lazy">`).join('');
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:1.1rem;line-height:1.75;">${place.placeDesc}</p>
+    <div class="food-highlight">
+      <h3 style="margin:0 0 14px;color:#f77f00;">🍽️ Famous Food: ${place.food}</h3>
+      <img src="${place.foodImage}" alt="${place.food}" class="food-image" loading="lazy">
+      <p style="margin:0;font-size:1.05rem;">${place.foodDesc}</p>
+    </div>
+    <div class="photo-carousel">
+      ${carouselHTML}
+      <button class="carousel-btn prev" onclick="prevPhoto()">‹</button>
+      <button class="carousel-btn next" onclick="nextPhoto()">›</button>
+    </div>
+  `;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+let currentPhoto = 0;
+function prevPhoto() {
+  const imgs = document.querySelectorAll('.photo-carousel img');
+  imgs[currentPhoto].classList.remove('active');
+  currentPhoto = (currentPhoto - 1 + imgs.length) % imgs.length;
+  imgs[currentPhoto].classList.add('active');
+}
+function nextPhoto() {
+  const imgs = document.querySelectorAll('.photo-carousel img');
+  imgs[currentPhoto].classList.remove('active');
+  currentPhoto = (currentPhoto + 1) % imgs.length;
+  imgs[currentPhoto].classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+
+const themeToggle = document.getElementById('theme-toggle');
+function updateThemeButton() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  themeToggle.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+}
+themeToggle.onclick = () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+  localStorage.setItem('japanTheme', isDark ? '' : 'dark');
+  updateThemeButton();
+};
+if (localStorage.getItem('japanTheme') === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+}
+updateThemeButton();
+
+function resetMap() {
+  map.flyToBounds(japanBounds, { duration: 1.5 });
+}
+
+map.on('click', closeModal);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
